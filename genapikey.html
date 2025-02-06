@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Key Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #0f0;
+            text-align: center;
+            padding: 20px;
+        }
+        .container {
+            width: 90%;
+            max-width: 600px;
+            margin: auto;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+        input, button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #0f0;
+            background: #222;
+            color: #0f0;
+        }
+        button {
+            cursor: pointer;
+            border: none;
+        }
+        .delete-btn { background: #dc3545; color: white; }
+        .delete-btn:hover { background: #c82333; }
+        .add-btn { background: #28a745; color: white; }
+        .add-btn:hover { background: #218838; }
+        .logout-btn { background: #ff9900; color: white; }
+        .logout-btn:hover { background: #e68a00; }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>API Key Manager</h2>
+
+    <!-- Login Form -->
+    <div id="loginContainer">
+        <h3>Login</h3>
+        <input type="text" id="username" placeholder="Enter Username">
+        <input type="password" id="password" placeholder="Enter Password">
+        <button class="add-btn" onclick="login()">Login</button>
+        <p>Don't have an account? <a href="#" onclick="toggleSignup(true)">Sign up</a></p>
+    </div>
+
+    <!-- Signup Form -->
+    <div id="signupContainer" style="display: none;">
+        <h3>Signup</h3>
+        <input type="text" id="newUsername" placeholder="Enter Username">
+        <input type="password" id="newPassword" placeholder="Enter Password">
+        <button class="add-btn" onclick="signup()">Create Account</button>
+        <p>Already have an account? <a href="#" onclick="toggleSignup(false)">Login</a></p>
+    </div>
+
+    <footer style="margin-top: 20px; color: #0f0; text-align: center;">
+    <p>Credits: By SAB MODZ</p>
+    </footer>
+
+    <!-- API Key Manager -->
+    <div id="apiKeyManager" style="display: none;">
+        <button class="logout-btn" onclick="logout()">Logout</button>
+
+        <h3>Existing API Keys</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>API Key</th>
+                    <th>Expiration Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="keyTableBody"></tbody>
+        </table>
+
+        <h3>Add New API Key</h3>
+        <input type="text" id="newApiKey" placeholder="Enter API Key">
+        <input type="date" id="newExpirationDate">
+        <button class="add-btn" onclick="addApiKey()">Add Key</button>
+
+        <h3>Remove API Key</h3>
+        <input type="text" id="removeApiKey" placeholder="Enter API Key to Remove">
+        <button class="delete-btn" onclick="removeApiKeyManual()">Remove Key</button>
+    </div>
+</div>
+
+<script>
+    function checkAuth() {
+        const token = localStorage.getItem("token");
+        document.getElementById("loginContainer").style.display = token ? "none" : "block";
+        document.getElementById("signupContainer").style.display = "none";
+        document.getElementById("apiKeyManager").style.display = token ? "block" : "none";
+
+        if (token) fetchApiKeys();
+    }
+
+    function toggleSignup(isSignup) {
+        document.getElementById("loginContainer").style.display = isSignup ? "none" : "block";
+        document.getElementById("signupContainer").style.display = isSignup ? "block" : "none";
+    }
+
+    async function signup() {
+        const username = document.getElementById("newUsername").value;
+        const password = document.getElementById("newPassword").value;
+
+        if (!username || !password) {
+            alert("Please enter a username and password.");
+            return;
+        }
+
+        const response = await fetch("/signup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            alert("Signup successful! Logging in...");
+            loginAfterSignup(username, password);
+        } else {
+            alert(result.error);
+        }
+    }
+
+    async function loginAfterSignup(username, password) {
+        const response = await fetch("/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            localStorage.setItem("token", result.token);
+            checkAuth();
+        } else {
+            alert("Signup successful, but login failed. Please try logging in.");
+        }
+    }
+
+    async function login() {
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        const response = await fetch("/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+            localStorage.setItem("token", result.token);
+            checkAuth();
+        } else {
+            alert(result.error);
+        }
+    }
+
+    async function fetchApiKeys() {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const response = await fetch("/key", {
+            method: "GET",
+            headers: { "Authorization": token }
+        });
+
+        const data = await response.json();
+        const tableBody = document.getElementById("keyTableBody");
+        tableBody.innerHTML = "";
+        for (let [apiKey, expirationDate] of Object.entries(data)) {
+            let row = `<tr>
+                <td>${apiKey}</td>
+                <td>${expirationDate}</td>
+                <td><button class="delete-btn" onclick="removeApiKey('${apiKey}')">Remove</button></td>
+            </tr>`;
+            tableBody.innerHTML += row;
+        }
+    }
+
+    async function addApiKey() {
+        const apiKey = document.getElementById("newApiKey").value;
+        const expirationDate = document.getElementById("newExpirationDate").value;
+        const token = localStorage.getItem("token");
+
+        if (!apiKey || !expirationDate) return alert("Please enter API Key and Expiration Date");
+
+        await fetch("/add-key", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": token },
+            body: JSON.stringify({ apiKey, expirationDate })
+        });
+
+        fetchApiKeys();
+    }
+
+    async function removeApiKey(apiKey) {
+        const token = localStorage.getItem("token");
+
+        await fetch("/removekey", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": token },
+            body: JSON.stringify({ apiKey })
+        });
+
+        fetchApiKeys();
+    }
+
+    function removeApiKeyManual() {
+        const apiKey = document.getElementById("removeApiKey").value;
+        if (!apiKey) {
+            alert("Please enter an API key to remove.");
+            return;
+        }
+        removeApiKey(apiKey);
+    }
+
+    function logout() {
+        localStorage.removeItem("token");
+        checkAuth();
+    }
+
+    checkAuth();
+</script>
+</body>
+</html>
