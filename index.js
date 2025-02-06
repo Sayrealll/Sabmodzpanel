@@ -166,7 +166,7 @@ app.get("/execute", (req, res) => {
         return res.status(403).json({ error: "The script has expired. Contact the owner for a new key." });
     }
 
-    res.json({ message: `Script is valid. Expires on: ${keysCache[apiKey]}` });
+    res.json({ message: `Script is valid.Your key willbExpires on: ${keysCache[apiKey]}` });
 });
 
 // Start Server
