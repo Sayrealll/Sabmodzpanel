@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 
 const PORT = 3000;
-const SECRET_KEY = process.env.SECRET_KEY || "EugenePogi";
+const SECRET_KEY = process.env.SECRET_KEY || "SabModz";
 
 const USER_IP_FILE = path.join(__dirname, "UserIp.json");
 const LOGIN_USER_FILE = path.join(__dirname, "LoginUser.json");
@@ -166,7 +166,7 @@ app.get("/execute", (req, res) => {
         return res.status(403).json({ error: "The script has expired. Contact the owner for a new key." });
     }
 
-    res.json({ message: `Script is valid. Expires on: ${keysCache[apiKey]}` });
+    res.json({ message: `Script is valid. Your key will expires on: ${keysCache[apiKey]}` });
 });
 
 // Start Server
